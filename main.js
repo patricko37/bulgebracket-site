@@ -1,18 +1,37 @@
-// Signup form has no backend yet: keep the page honest instead of pretending.
+// Invite form: post in the background and confirm in place. Falls back to a normal
+// submit (and a redirect back here with ?invited=1) if fetch is unavailable or fails.
 (function () {
   var form = document.querySelector(".signup");
-  if (!form) return;
+  var note = document.querySelector(".signup-note");
+  if (!form || !note) return;
+
+  function confirmed(email) {
+    form.hidden = true;
+    note.textContent = "You're on the list" + (email ? " as " + email : "") + ". We'll send a TestFlight invite as seats open.";
+  }
+
+  if (/[?&]invited=1/.test(window.location.search)) confirmed("");
+
   form.addEventListener("submit", function (e) {
-    if (form.getAttribute("action") === "#") {
-      e.preventDefault();
-      var note = form.querySelector(".form-note");
-      if (!note) {
-        note = document.createElement("p");
-        note.className = "fine form-note";
-        note.setAttribute("role", "status");
-        form.insertAdjacentElement("afterend", note);
-      }
-      note.textContent = "This form isn't connected yet. Email hello@bulgebracket.app and we will add you to the list by hand.";
-    }
+    if (!window.fetch || !window.FormData) return;
+    e.preventDefault();
+    var button = form.querySelector("button");
+    var email = form.querySelector("#email").value;
+    button.disabled = true;
+    button.textContent = "Sending";
+    fetch(form.action.replace("formsubmit.co/", "formsubmit.co/ajax/"), {
+      method: "POST",
+      headers: { Accept: "application/json" },
+      body: new FormData(form)
+    }).then(function (r) {
+      if (!r.ok) throw new Error(String(r.status));
+      return r.json();
+    }).then(function () {
+      confirmed(email);
+    }).catch(function () {
+      button.disabled = false;
+      button.textContent = "Request an invite";
+      note.textContent = "That didn't go through. Try again, or email patrickodonohuev@icloud.com and we'll add you by hand.";
+    });
   });
 })();
