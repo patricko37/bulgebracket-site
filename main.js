@@ -26,7 +26,8 @@
     }).then(function (r) {
       if (!r.ok) throw new Error(String(r.status));
       return r.json();
-    }).then(function () {
+    }).then(function (data) {
+      if (!data || String(data.success) !== "true") throw new Error("refused");
       confirmed(email);
     }).catch(function () {
       button.disabled = false;
